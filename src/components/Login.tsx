@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ShieldAlert, KeyRound, ArrowRight, Loader2, Cpu } from 'lucide-react';
+// 1. Importe os ícones Eye e EyeOff do lucide-react
+import { ShieldAlert, KeyRound, ArrowRight, Loader2, Cpu, Eye, EyeOff } from 'lucide-react';
 import { api, setAuthToken } from '../services/api';
 
 interface LoginProps {
@@ -10,6 +11,8 @@ export function Login({ onLoginSuccess }: LoginProps) {
   const [accessCode, setAccessCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 2. Crie o estado para controlar a visibilidade da senha
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,9 +46,9 @@ export function Login({ onLoginSuccess }: LoginProps) {
           <div className="w-14 h-14 rounded-2xl bg-[#285995] border border-[#285995]/60 flex items-center justify-center text-white mx-auto mb-4 shadow-lg">
             <ShieldAlert size={28} />
           </div>
-          <h1 className="text-xl font-black tracking-tight text-white">INDUSTRIAL ALERT SYSTEM</h1>
+          <h1 className="text-xl font-black tracking-tight text-white">SISTEMA DE NOTIFICAÇÃO</h1>
           <p className="text-xs text-[#D3D6D9]/80 mt-1.5 font-medium">
-            Monitoramento de Falhas & Fila WhatsApp (Tabela Única)
+            Monitoramento de Falhas & Notificações via WhatsApp
           </p>
         </div>
 
@@ -54,19 +57,30 @@ export function Login({ onLoginSuccess }: LoginProps) {
           <div>
             <label className="block text-xs font-bold text-[#D3D6D9] uppercase tracking-wider mb-2 flex items-center justify-between">
               <span>Código de Acesso</span>
-              <span className="text-[11px] text-[#5A656C] font-mono font-normal">Padrão: 123456</span>
             </label>
             <div className="relative">
               <KeyRound size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#5A656C]" />
+              
+              {/* 3. O type agora é dinâmico com base no estado showPassword */}
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={accessCode}
                 onChange={(e) => setAccessCode(e.target.value)}
-                placeholder="Digite o código PIN industrial"
+                placeholder="Digite o código de acesso"
                 required
                 autoFocus
-                className="w-full pl-10 pr-4 py-3 bg-[#12161A] border border-[#5A656C]/40 rounded-xl text-sm text-white placeholder-[#5A656C] font-mono focus:outline-none focus:ring-2 focus:ring-[#285995]"
+                className="w-full pl-10 pr-11 py-3 bg-[#12161A] border border-[#5A656C]/40 rounded-xl text-sm text-white placeholder-[#5A656C] font-mono focus:outline-none focus:ring-2 focus:ring-[#285995]"
               />
+
+              {/* 4. Botão de alternância posicionado no canto direito do input */}
+              <button
+                type="button" // IMPORTANTE: type="button" para não disparar o submit do form
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#5A656C] hover:text-[#D3D6D9] transition-colors focus:outline-none"
+                tabIndex={-1} // Evita que o tab pare no ícone antes do botão de entrar
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 
@@ -86,7 +100,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <>
-                <span>Acessar Painel</span>
+                <span>Entrar</span>
                 <ArrowRight size={16} />
               </>
             )}
@@ -96,8 +110,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
         {/* System Architecture info */}
         <div className="mt-8 pt-6 border-t border-[#5A656C]/30 text-center">
           <div className="flex items-center justify-center gap-2 text-xs text-[#5A656C]">
-            <Cpu size={14} className="text-[#285995]" />
-            <span>Fila atômica de banco para CLP, Node-RED e supervisório</span>
+            <span>{new Date().toLocaleDateString('pt-BR', { dateStyle: 'full' })}</span>
           </div>
         </div>
       </div>

@@ -295,7 +295,7 @@ async function startServer() {
   const PORT = config.port;
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`========================================================`);
-    console.log(` INDUSTRIAL ALERT SYSTEM rodando na porta ${PORT}`);
+    console.log(` SISTEMA DE NOTIFICAÇÃO SYSTEM rodando na porta ${PORT}`);
     console.log(` Modo de Banco: ${db.getMode().toUpperCase()} (Tabela Única 'falhas')`);
     console.log(` Código de Acesso Padrão: ${config.accessCode}`);
     console.log(`========================================================`);

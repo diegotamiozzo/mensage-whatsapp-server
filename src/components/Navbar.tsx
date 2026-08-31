@@ -78,7 +78,7 @@ export function Navbar({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-base font-black tracking-tight text-white">INDUSTRIAL ALERT</span>
+              <span className="text-base font-black tracking-tight text-white">SISTEMA DE NOTIFICAÇÃO</span>
             </div>
             <p className="text-[11px] text-[#5A656C] font-mono hidden sm:block">tabela: falhas</p>
           </div>

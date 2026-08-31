@@ -21,14 +21,14 @@ export function formatEventDateTime(isoString: string): string {
 export function generateFailureMessage(event: FalhaEvent): string {
   const formattedTime = formatEventDateTime(event.creat_at);
 
-  return `*🚨 ALERTA DE FALHA INDUSTRIAL*
+  return `*🚨 ALERTA DE FALHA*
 
 *Equipamento:* ${event.equipamento_id}
-*Setor:* ${event.setor || 'Não especificado'}
+*Local:* ${event.setor || 'Não especificado'}
 *Horário da Ocorrência:* ${formattedTime}
 *Identificador:* Falha #${event.id}
 
-⚠️ *Atenção:* O equipamento registrou uma falha no sistema de supervisão. Por favor, verifique a operação imediatamente.`;
+⚠️ *Atenção:* O equipamento registrou uma falha no sistema. Por favor, verifique a operação imediatamente.`;
 }
 
 /**
@@ -36,11 +36,11 @@ export function generateFailureMessage(event: FalhaEvent): string {
  */
 export function generateTestMessage(phoneNumber: string): string {
   const now = formatEventDateTime(new Date().toISOString());
-  return `✅ *TESTE DE COMUNICAÇÃO - ALERTA INDUSTRIAL*
+  return `✅ *TESTE DE COMUNICAÇÃO*
 
-Sistema de monitoramento e notificações conectado com sucesso!
+Sistema de notificações conectado com sucesso!
 *Horário do Teste:* ${now}
 *Destinatário:* ${phoneNumber}
 
-Tudo pronto para receber alertas automáticos de falhas de equipamentos.`;
+Tudo pronto para enviar alertas automáticos de falhas de equipamentos.`;
 }
