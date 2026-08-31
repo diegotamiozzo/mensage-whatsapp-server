@@ -1,0 +1,6 @@
+{
+  "name": "WhatsApp Message Sender",
+  "description": "WhatsApp notification dashboard with QR code authentication and automated messaging.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

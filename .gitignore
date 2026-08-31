@@ -1,0 +1,61 @@
+# ===== Dependências =====
+node_modules/
+**/node_modules/
+
+# ===== Build / Dist =====
+dist/
+build/
+**/dist/
+**/build/
+*.tsbuildinfo
+
+# ===== Logs =====
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== Variáveis de ambiente =====
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# ===== Baileys (sessão do WhatsApp) =====
+backend/auth_info_baileys/
+auth_info_baileys/
+**/auth_info_baileys/
+*.session
+*.creds.json
+
+# ===== Armazenamento Local =====
+data_storage.json
+
+# ===== Testes / Coverage =====
+coverage/
+.nyc_output/
+
+# ===== Editor / IDE =====
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# ===== Sistema Operacional =====
+.DS_Store
+Thumbs.db
+
+# ===== Cache =====
+.cache/
+.turbo/
+.eslintcache
+
+# ===== Diversos =====
+*.tgz
+*.tar.gz
+.vercel
+.netlify

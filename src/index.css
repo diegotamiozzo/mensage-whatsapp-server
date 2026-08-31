@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --brand-gray: #5A656C;
+    --brand-blue: #285995;
+    --brand-light: #D3D6D9;
+  }
+
+  body {
+    background-color: #12161A;
+    color: #D3D6D9;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Custom Scrollbar for Industrial Terminal */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #0E1215;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #5A656C;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #738088;
+}
+
+/* Corporate Palette Utilities */
+.bg-brand-blue {
+  background-color: #285995;
+}
+.bg-brand-gray {
+  background-color: #5A656C;
+}
+.bg-brand-light {
+  background-color: #D3D6D9;
+}
+.text-brand-blue {
+  color: #285995;
+}
+.text-brand-gray {
+  color: #5A656C;
+}
+.text-brand-light {
+  color: #D3D6D9;
+}
+.border-brand-blue {
+  border-color: #285995;
+}
+.border-brand-gray {
+  border-color: #5A656C;
+}
+.border-brand-light {
+  border-color: #D3D6D9;
+}

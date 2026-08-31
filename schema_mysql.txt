@@ -1,0 +1,45 @@
+-- ============================================================================
+-- SISTEMA INDUSTRIAL DE ALERTA DE FALHAS VIA WHATSAPP
+-- Tabela Única Simplificada para Ingestão CLP / Node-RED / IoT
+-- ============================================================================
+
+CREATE DATABASE IF NOT EXISTS industrial_alerts CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE industrial_alerts;
+
+-- ----------------------------------------------------------------------------
+-- TABELA ÚNICA DE FALHAS INDUSTRIAIS (Conforme especificação da planilha)
+-- ----------------------------------------------------------------------------
+-- id            : Identificador de falhas (Auto Increment)
+-- equipamento_id: Identificador do equipamento (Ex: EQ-001, PRENSA-02)
+-- setor         : Setor, local da instalação do equipamento (Ex: Estamparia)
+-- user          : Destinatário do envio da mensagem (Telefone WhatsApp: 5548999998888)
+-- status        : 0 quando inserido falha no banco e 1 quando enviado
+-- creat_at      : Momento da falha
+-- update_at     : Momento do envio da mensagem
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS falhas (
+    id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'identificador de falhas',
+    equipamento_id VARCHAR(50) NOT NULL COMMENT 'identificador do equipamento',
+    setor VARCHAR(100) NOT NULL COMMENT 'setor, local da instalação do equipamento',
+    user VARCHAR(30) NOT NULL COMMENT 'destinatário do envio da mensagem (número WhatsApp com DDI/DDD)',
+    status TINYINT NOT NULL DEFAULT 0 COMMENT '0 quando inserido falha no banco e 1 quando enviado (2=processando, 3=erro)',
+    attempts INT NOT NULL DEFAULT 0 COMMENT 'contador de tentativas de envio',
+    error_message TEXT NULL COMMENT 'última mensagem de erro se houver',
+    creat_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'momento da falha',
+    update_at DATETIME NULL COMMENT 'momento do envio da mensagem',
+    
+    INDEX idx_falhas_status (status),
+    INDEX idx_falhas_equipamento (equipamento_id),
+    INDEX idx_falhas_creat_at (creat_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- EXEMPLO DE INSERÇÃO PELO NODE-RED / CLP (Status 0 = Pendente):
+-- ----------------------------------------------------------------------------
+-- INSERT INTO falhas (equipamento_id, setor, user, status, creat_at)
+-- VALUES ('EQ-001', 'Estamparia', '5548999998888', 0, NOW());
+
+-- ----------------------------------------------------------------------------
+-- CONSULTA EXECUTADA PELO WORKER:
+-- ----------------------------------------------------------------------------
+-- SELECT * FROM falhas WHERE status = 0 ORDER BY creat_at ASC LIMIT 20 FOR UPDATE;
