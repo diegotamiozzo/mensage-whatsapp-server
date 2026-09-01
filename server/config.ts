@@ -16,6 +16,8 @@ const accessCodeHash = bcrypt.hashSync(rawAccessCode, 10);
 export const config = {
   port: Number(process.env.PORT) || 3000,
   corsOrigin: process.env.CORS_ORIGIN || '*',
+  iotApiKey: process.env.IOT_API_KEY || '',
+  nodeEnv: process.env.NODE_ENV || 'development',
   db: {
     host: process.env.DATABASE_HOST || '',
     port: Number(process.env.DATABASE_PORT) || 3306,

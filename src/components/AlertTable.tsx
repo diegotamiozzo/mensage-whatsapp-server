@@ -7,22 +7,21 @@ interface AlertTableProps {
 
 function formatDateDisplay(isoString?: string | null): string {
   if (!isoString) return '-';
+
   try {
-    if (typeof isoString === 'string' && /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(isoString)) {
-      const [datePart, timePartRaw] = isoString.split(/[ T]/);
-      const [year, month, day] = datePart.split('-');
-      const timePart = timePartRaw.substring(0, 8);
-      return `${day}/${month}/${year} ${timePart}`;
-    }
     const d = new Date(isoString);
-    if (isNaN(d.getTime())) return String(isoString);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const h = String(d.getHours()).padStart(2, '0');
-    const m = String(d.getMinutes()).padStart(2, '0');
-    const s = String(d.getSeconds()).padStart(2, '0');
-    return `${day}/${month}/${year} ${h}:${m}:${s}`;
+    if (Number.isNaN(d.getTime())) return String(isoString);
+
+    return new Intl.DateTimeFormat('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(d);
   } catch {
     return String(isoString || '-');
   }
@@ -77,13 +76,13 @@ export function AlertTable({ falhas, onRetry }: AlertTableProps) {
           <thead>
             <tr className="bg-[#1F2730] border-b border-[#5A656C]/40 text-white font-bold text-xs tracking-wider">
               <th className="py-3 px-4 border-r border-[#5A656C]/30 w-16">id</th>
-              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-[150px]">equipamento_id</th>
-              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-[180px]">setor</th>
-              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-[170px]">user</th>
-              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-[160px]">status</th>
-              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-[170px]">creat-at</th>
-              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-[170px]">update_at</th>
-              <th className="py-3 px-4 min-w-[120px]">ações</th>
+              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-37.5">equipamento_id</th>
+              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-45">setor</th>
+              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-min-42.5">user</th>
+              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-40">status</th>
+              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-42.5">creat-at</th>
+              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-42.5">update_at</th>
+              <th className="py-3 px-4 min-w-30">ações</th>
             </tr>
 
             <tr className="bg-[#161C22] border-b border-[#5A656C]/40 text-[#8C9BA5] text-[11px] font-normal italic">

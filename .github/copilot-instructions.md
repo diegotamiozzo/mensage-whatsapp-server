@@ -6,7 +6,7 @@ This repository is a full-stack industrial alert system that accepts failure eve
 The important runtime flow is:
 - `server.ts` starts Express, Socket.IO, and the Vite dev server for the SPA.
 - `server/config.ts` loads environment variables and exposes runtime config.
-- `server/db/database.ts` is the persistence layer: it prefers MySQL (`DATABASE_HOST`/`DATABASE_URL`) and falls back to a local JSON store (`data_storage.json`) when MySQL is unavailable.
+- `server/db/database.ts` is the persistence layer and is configured for MySQL only (`DATABASE_HOST`/`DATABASE_URL`).
 - `server/services/worker.ts` polls for pending `falhas` records and processes them asynchronously.
 - `server/services/whatsapp.ts` manages the Baileys connection, QR code flow, session persistence under `auth_info_baileys`, and message sending.
 - `server/services/auth.ts` handles the dashboard access code, in-memory session tokens, and login rate limiting.
@@ -38,7 +38,7 @@ Test runner status:
 - `falhas` is the central domain object. The system assumes a unified table with fields like `id`, `equipamento_id`, `setor`, `user`, `status`, `attempts`, `error_message`, `creat_at`, and `update_at`.
 - Status semantics are part of the domain contract: `0 = Pendente`, `1 = Enviado`, `2 = Processando`, `3 = Erro`.
 - `user` is expected to be a normalized WhatsApp destination in digits-only format (for example `5548999998888`), and the API validates the length before enqueuing.
-- The app intentionally supports two database modes: `mysql` and `embedded`. If `DATABASE_HOST`/`DATABASE_URL` are not set, it silently uses the local JSON file and logs that mode.
+- The app is configured for MySQL only. If `DATABASE_HOST`/`DATABASE_URL` are not set, startup fails with a clear configuration error.
 - The WhatsApp service reconnects automatically when the session is closed unless the user logs out. QR codes are emitted through the UI via Socket.IO events.
 - The dashboard is authenticated with a bearer token generated server-side; the token is checked in middleware before protected routes (`/api/stats`, `/api/falhas`, etc.).
 - Runtime safety defaults are in `server/config.ts`: `ACCESS_CODE` defaults to `admin123` for local dev, but production warns if the default is left in place.
@@ -57,11 +57,11 @@ When working in this repo, prefer the existing boundaries:
 - Backend logic lives under `server/`.
 - Frontend UI and client-side data handling live under `src/`.
 - Keep the event contract consistent with the worker and not just the UI.
-- If you change persistence behavior, update the corresponding database logic in `server/db/database.ts` and keep the local JSON fallback in sync.
+- If you change persistence behavior, update the corresponding database logic in `server/db/database.ts` and keep the MySQL contract aligned with the `falhas` table.
 - If you change the WhatsApp flow, check `server/services/whatsapp.ts` and the Socket.IO event contract in `server/socket.ts`.
 
 ## When making changes
-- Preserve the dual-mode database behavior: MySQL-first, embedded fallback.
+- Keep the project MySQL-only and require DATABASE_HOST/DATABASE_URL for startup.
 - Maintain the `falhas` status semantics and retry logic when altering worker behavior.
 - Keep token/session and login-rate-limit logic consistent with `server/services/auth.ts` if modifying dashboard authentication.
-- Respect the repo's local-first operational model: many flows are designed to run without MySQL configured, especially for local demos.
+- Treat the MySQL schema as the system of record and avoid adding fallback storage paths.

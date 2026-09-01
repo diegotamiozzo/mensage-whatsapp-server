@@ -18,7 +18,7 @@ export interface DashboardStats {
   pendentes: number;
   erros: number;
   processando: number;
-  dbMode?: 'mysql' | 'embedded';
+  dbMode?: 'mysql';
   whatsappStatus?: WhatsAppState;
 }
 

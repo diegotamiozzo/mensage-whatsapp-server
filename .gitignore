@@ -32,7 +32,6 @@ auth_info_baileys/
 *.creds.json
 
 # ===== Armazenamento Local =====
-data_storage.json
 
 # ===== Testes / Coverage =====
 coverage/

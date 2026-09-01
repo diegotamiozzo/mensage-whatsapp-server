@@ -14,7 +14,7 @@ export function formatEventDateTime(isoString: string): string {
       hour12: false,
     });
 
-    return formatter.format(d).replace(',', ' às');
+    return `${formatter.format(d).replace(',', ' às')}`;
   } catch {
     return isoString;
   }
@@ -40,7 +40,7 @@ export function generateFailureMessage(event: FalhaEvent): string {
  * Template de teste manual do sistema
  */
 export function generateTestMessage(phoneNumber: string): string {
-  const now = formatEventDateTime(new Date().toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' }).replace(' ', 'T') + '.000');
+  const now = formatEventDateTime(new Date().toISOString());
   return `✅ *TESTE DE COMUNICAÇÃO*
 
 Sistema de notificações conectado com sucesso!

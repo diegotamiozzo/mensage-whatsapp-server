@@ -28,6 +28,8 @@ const __filename = '';
 const __dirname = process.cwd();
 
 async function startServer() {
+  await db.init();
+
   const app = express();
   const server = http.createServer(app);
 
@@ -106,6 +108,24 @@ async function startServer() {
   // ---------------------------------------------------------------------------
   app.post('/api/iot/falha', async (req, res) => {
     try {
+      const configuredIotKey = config.iotApiKey?.trim();
+      const requestKey = req.headers['x-device-key'] || req.headers['x-iot-key'];
+      const bearerToken = req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.slice('Bearer '.length)
+        : undefined;
+
+      const isProduction = config.nodeEnv === 'production';
+      const hasValidKey = !!configuredIotKey && (requestKey === configuredIotKey || bearerToken === configuredIotKey);
+
+      if (isProduction || configuredIotKey) {
+        if (!hasValidKey) {
+          return res.status(401).json({
+            success: false,
+            message: 'Chave de API de dispositivo inválida ou ausente.',
+          });
+        }
+      }
+
       const {
         equipamento_id,
         codigo_equipamento,
@@ -254,7 +274,7 @@ async function startServer() {
       maxRetryAttempts: config.maxRetryAttempts,
       dataRetentionDays: config.dataRetentionDays,
       databaseMode: db.getMode(),
-      databaseHost: config.db.host || 'Motor Integrado Local',
+      databaseHost: config.db.host || 'MySQL não configurado',
     });
   });
 

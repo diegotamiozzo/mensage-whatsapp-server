@@ -1,6 +1,4 @@
 import mysql from 'mysql2/promise';
-import fs from 'fs';
-import path from 'path';
 import { config } from '../config.js';
 import { logger } from '../services/logger.js';
 
@@ -33,17 +31,38 @@ function getBraziliaDate(dateInput?: Date | string | null): Date {
   return new Date(year, month - 1, day, hours, minutes, seconds);
 }
 
+function toUtcIsoString(dateInput?: Date | string | null): string {
+  const d = dateInput ? new Date(dateInput) : new Date();
+  return d.toISOString();
+}
+
 function toMysqlDatetime(dateInput?: Date | string | null): string {
-  const d = getBraziliaDate(dateInput);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const d = dateInput ? new Date(dateInput) : new Date();
+  return d.toISOString().slice(0, 19).replace('T', ' ');
 }
 
 function toLocalIsoString(dateInput?: Date | string | null): string {
-  const d = getBraziliaDate(dateInput);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const ms = String(d.getMilliseconds()).padStart(3, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${ms}`;
+  return toUtcIsoString(dateInput);
+}
+
+function getStartOfDayInSaoPaulo(): Date {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  const parts = formatter.formatToParts(now);
+  const values = Object.fromEntries(
+    parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value])
+  );
+  const year = Number(values.year);
+  const month = Number(values.month);
+  const day = Number(values.day);
+
+  return new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-03:00`);
 }
 
 export interface FalhaEvent {
@@ -69,108 +88,20 @@ export interface DashboardStats {
 class DatabaseService {
   private pool: mysql.Pool | null = null;
   private isMysqlActive = false;
-  private localDataPath = path.join(process.cwd(), 'data_storage.json');
-
-  // Single in-memory / local file storage for the unified table
-  private localFalhas: FalhaEvent[] = [];
-  private nextFalhaId = 1;
 
   constructor() {
-    this.initLocalData();
-    this.tryInitMysql();
+    // MySQL is the only supported persistence layer in this project.
   }
 
-  private initLocalData() {
-    try {
-      if (fs.existsSync(this.localDataPath)) {
-        const raw = fs.readFileSync(this.localDataPath, 'utf8');
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.falhas)) {
-          // Normalize existing data if necessary
-          this.localFalhas = parsed.falhas.map((f: any) => ({
-            id: Number(f.id),
-            equipamento_id: f.equipamento_id || f.codigo_equipamento || 'EQ-001',
-            setor: f.setor || 'Geral',
-            user: f.user || f.recipient || '',
-            status: (f.status !== undefined ? Number(f.status) : 0) as 0 | 1 | 2 | 3,
-            attempts: Number(f.attempts || 0),
-            error_message: f.error_message || null,
-            creat_at: f.creat_at || f.created_at || new Date().toISOString(),
-            update_at: f.update_at || f.sent_at || f.updated_at || null,
-          }));
-        }
-        this.nextFalhaId = parsed.nextFalhaId || (this.localFalhas.length + 1);
-      }
-    } catch (e) {
-      console.warn('Resetando armazenamento local integrado.');
-    }
-
-    if (this.localFalhas.length === 0) {
-      // Seed initial example data for demo
-      const now = Date.now();
-      this.localFalhas = [
-        {
-          id: 1,
-          equipamento_id: 'PRENSA-01',
-          setor: 'Estamparia',
-          user: '5548999998888',
-          status: 1,
-          attempts: 1,
-          error_message: null,
-          creat_at: new Date(now - 1000 * 60 * 45).toISOString(),
-          update_at: new Date(now - 1000 * 60 * 44).toISOString(),
-        },
-        {
-          id: 2,
-          equipamento_id: 'TORNO-CNC-02',
-          setor: 'Usinagem',
-          user: '5548999998888',
-          status: 1,
-          attempts: 1,
-          error_message: null,
-          creat_at: new Date(now - 1000 * 60 * 20).toISOString(),
-          update_at: new Date(now - 1000 * 60 * 19).toISOString(),
-        },
-        {
-          id: 3,
-          equipamento_id: 'COMPRESSOR-A',
-          setor: 'Utilidades',
-          user: '5548999998888',
-          status: 0,
-          attempts: 0,
-          error_message: null,
-          creat_at: new Date(now - 1000 * 60 * 2).toISOString(),
-          update_at: null,
-        },
-      ];
-      this.nextFalhaId = 4;
-    }
-
-    this.saveLocalData();
-  }
-
-  private saveLocalData() {
-    try {
-      fs.writeFileSync(
-        this.localDataPath,
-        JSON.stringify(
-          {
-            falhas: this.localFalhas,
-            nextFalhaId: this.nextFalhaId,
-          },
-          null,
-          2
-        )
-      );
-    } catch (e) {
-      // Ignore disk write errors in ephemeral environment
-    }
+  public async init(): Promise<void> {
+    await this.tryInitMysql();
   }
 
   private async tryInitMysql() {
     if (!config.db.host && !config.db.url) {
-      logger.info('Modo de Banco: Motor Integrado (MySQL pode ser ativado configurando DATABASE_HOST no .env)');
-      return;
+      const message = 'MySQL não configurado. Defina DATABASE_HOST ou DATABASE_URL no .env antes de iniciar o sistema.';
+      logger.error(message);
+      throw new Error(message);
     }
 
     try {
@@ -222,14 +153,15 @@ class DatabaseService {
       connection.release();
       this.isMysqlActive = true;
     } catch (err: any) {
-      logger.warn(`MySQL não disponível (${err.message}). Utilizando banco de dados local integrado.`);
+      logger.error(`MySQL indisponível: ${err.message}`);
       this.isMysqlActive = false;
       this.pool = null;
+      throw err;
     }
   }
 
-  public getMode(): 'mysql' | 'embedded' {
-    return this.isMysqlActive ? 'mysql' : 'embedded';
+  public getMode(): 'mysql' {
+    return 'mysql';
   }
 
   // --- INSERÇÃO DE FALHA (Única Tabela Conforme Imagem) ---
@@ -243,15 +175,6 @@ class DatabaseService {
     const rawDate = data.creat_at || new Date();
     const formattedCreatAt = toMysqlDatetime(rawDate);
     const localIsoCreatAt = toLocalIsoString(rawDate);
-
-    // Evita duplicar o registro se o mesmo equipamento chegar com exatamente o mesmo timestamp (creat_at)
-    const existingSameTimestamp = this.localFalhas.find(
-      (f) => f.equipamento_id.toUpperCase() === equipId && f.creat_at.startsWith(formattedCreatAt.substring(0, 19))
-    );
-    if (existingSameTimestamp) {
-      logger.info(`Falha duplicada ignorada para o equipamento ${equipId} no mesmo timestamp (${formattedCreatAt}).`);
-      return existingSameTimestamp;
-    }
 
     if (this.isMysqlActive && this.pool) {
       try {
@@ -273,17 +196,17 @@ class DatabaseService {
             update_at: existingRows[0].update_at,
           };
         }
-      } catch (e) {}
+      } catch (e) {
+        logger.warn(`Falha na verificação de duplicidade para ${equipId}: ${String(e)}`);
+      }
     }
 
-    const newId = this.nextFalhaId++;
-
     const newFalha: FalhaEvent = {
-      id: newId,
+      id: 0,
       equipamento_id: equipId,
       setor: data.setor.trim() || 'Geral',
       user: data.user.replace(/\D/g, ''),
-      status: 0, // 0 = Inserido falha no banco (Pendente)
+      status: 0,
       attempts: 0,
       error_message: null,
       creat_at: localIsoCreatAt,
@@ -293,18 +216,17 @@ class DatabaseService {
     if (this.isMysqlActive && this.pool) {
       try {
         const [res]: any = await this.pool.query(
-          `INSERT INTO falhas (equipamento_id, setor, user, status, attempts, creat_at) 
+          `INSERT INTO falhas (equipamento_id, setor, user, status, attempts, creat_at)
            VALUES (?, ?, ?, 0, 0, ?)`,
           [newFalha.equipamento_id, newFalha.setor, newFalha.user, formattedCreatAt]
         );
         newFalha.id = res.insertId;
       } catch (e) {
         logger.error('Erro ao inserir falha no MySQL', e);
+        throw e;
       }
     }
 
-    this.localFalhas.unshift(newFalha);
-    this.saveLocalData();
     return newFalha;
   }
 
@@ -357,47 +279,23 @@ class DatabaseService {
       }
     }
 
-    // Atomic in-memory processing
-    const candidates = this.localFalhas
-      .filter((f) => {
-        if (f.status === 0) return true;
-        if (f.status === 3 && f.attempts < config.maxRetryAttempts) return true;
-        return false;
-      })
-      .sort((a, b) => new Date(a.creat_at).getTime() - new Date(b.creat_at).getTime())
-      .slice(0, limit);
-
-    const lockedList: FalhaEvent[] = [];
-    for (const c of candidates) {
-      c.status = 2; // 2 = Processando
-      lockedList.push({ ...c });
-    }
-
-    if (lockedList.length > 0) {
-      this.saveLocalData();
-    }
-
-    return lockedList;
+    throw new Error('MySQL não está disponível. Configure DATABASE_HOST/DATABASE_URL antes de iniciar o sistema.');
   }
 
   public async updateFalhaSuccess(id: number, updateAtIso: string): Promise<void> {
-    if (this.isMysqlActive && this.pool) {
-      try {
-        const mysqlFormattedDate = toMysqlDatetime(updateAtIso);
-        await this.pool.query(
-          'UPDATE falhas SET status = 1, update_at = ? WHERE id = ?',
-          [mysqlFormattedDate, id]
-        );
-      } catch (e) {
-        logger.error(`Erro ao atualizar sucesso da falha #${id} no MySQL`, e);
-      }
+    if (!this.isMysqlActive || !this.pool) {
+      throw new Error('MySQL não está disponível. Configure DATABASE_HOST/DATABASE_URL antes de iniciar o sistema.');
     }
 
-    const item = this.localFalhas.find((f) => f.id === id);
-    if (item) {
-      item.status = 1; // 1 = Enviado
-      item.update_at = updateAtIso; // Momento do envio da mensagem
-      this.saveLocalData();
+    try {
+      const mysqlFormattedDate = toMysqlDatetime(updateAtIso);
+      await this.pool.query(
+        'UPDATE falhas SET status = 1, update_at = ? WHERE id = ?',
+        [mysqlFormattedDate, id]
+      );
+    } catch (e) {
+      logger.error(`Erro ao atualizar sucesso da falha #${id} no MySQL`, e);
+      throw e;
     }
   }
 
@@ -406,77 +304,69 @@ class DatabaseService {
     errorMessage: string,
     attempts: number
   ): Promise<void> {
-    if (this.isMysqlActive && this.pool) {
-      try {
-        await this.pool.query(
-          `UPDATE falhas 
-           SET status = 3, attempts = ?, error_message = ? 
-           WHERE id = ?`,
-          [attempts, errorMessage, id]
-        );
-      } catch (e) {
-        logger.error(`Erro ao atualizar erro da falha #${id} no MySQL`, e);
-      }
+    if (!this.isMysqlActive || !this.pool) {
+      throw new Error('MySQL não está disponível. Configure DATABASE_HOST/DATABASE_URL antes de iniciar o sistema.');
     }
 
-    const item = this.localFalhas.find((f) => f.id === id);
-    if (item) {
-      item.status = 3; // 3 = Erro
-      item.attempts = attempts;
-      item.error_message = errorMessage;
-      this.saveLocalData();
+    try {
+      await this.pool.query(
+        `UPDATE falhas 
+         SET status = 3, attempts = ?, error_message = ? 
+         WHERE id = ?`,
+        [attempts, errorMessage, id]
+      );
+    } catch (e) {
+      logger.error(`Erro ao atualizar erro da falha #${id} no MySQL`, e);
+      throw e;
     }
   }
 
   public async manualRetryFalha(id: number): Promise<boolean> {
-    if (this.isMysqlActive && this.pool) {
-      try {
-        await this.pool.query(
-          'UPDATE falhas SET status = 0, error_message = NULL WHERE id = ?',
-          [id]
-        );
-      } catch (e) {}
+    if (!this.isMysqlActive || !this.pool) {
+      throw new Error('MySQL não está disponível. Configure DATABASE_HOST/DATABASE_URL antes de iniciar o sistema.');
     }
-    const item = this.localFalhas.find((f) => f.id === id);
-    if (item) {
-      item.status = 0; // Volta para Pendente
-      item.error_message = null;
-      this.saveLocalData();
+
+    try {
+      await this.pool.query(
+        'UPDATE falhas SET status = 0, error_message = NULL WHERE id = ?',
+        [id]
+      );
       return true;
+    } catch (e) {
+      logger.error(`Erro no retry manual da falha #${id}`, e);
+      return false;
     }
-    return false;
   }
 
   public async getFalhas(limit = 100): Promise<FalhaEvent[]> {
-    if (this.isMysqlActive && this.pool) {
-      try {
-        const [rows] = await this.pool.query<any[]>(
-          'SELECT * FROM falhas ORDER BY creat_at DESC LIMIT ?',
-          [limit]
-        );
-        return rows.map((r: any) => ({
-          id: r.id,
-          equipamento_id: r.equipamento_id,
-          setor: r.setor,
-          user: r.user,
-          status: r.status,
-          attempts: r.attempts || 0,
-          error_message: r.error_message || null,
-          creat_at: r.creat_at,
-          update_at: r.update_at,
-        })) as FalhaEvent[];
-      } catch (e) {
-        logger.error('Erro ao listar falhas do MySQL, usando local');
-      }
+    if (!this.isMysqlActive || !this.pool) {
+      throw new Error('MySQL não está disponível. Configure DATABASE_HOST/DATABASE_URL antes de iniciar o sistema.');
     }
-    return [...this.localFalhas]
-      .sort((a, b) => new Date(b.creat_at).getTime() - new Date(a.creat_at).getTime())
-      .slice(0, limit);
+
+    try {
+      const [rows] = await this.pool.query<any[]>(
+        'SELECT * FROM falhas ORDER BY creat_at DESC LIMIT ?',
+        [limit]
+      );
+      return rows.map((r: any) => ({
+        id: r.id,
+        equipamento_id: r.equipamento_id,
+        setor: r.setor,
+        user: r.user,
+        status: r.status,
+        attempts: r.attempts || 0,
+        error_message: r.error_message || null,
+        creat_at: r.creat_at,
+        update_at: r.update_at,
+      })) as FalhaEvent[];
+    } catch (e) {
+      logger.error('Erro ao listar falhas do MySQL', e);
+      throw e;
+    }
   }
 
   public async getDashboardStats(): Promise<DashboardStats> {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const startOfDay = getStartOfDayInSaoPaulo();
 
     const all = await this.getFalhas(1000);
     const todayEvents = all.filter((f) => new Date(f.creat_at) >= startOfDay);
@@ -491,33 +381,20 @@ class DatabaseService {
   }
 
   public async cleanOldRecords(retentionDays: number): Promise<number> {
-    const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
-
-    let deletedCount = 0;
-
-    if (this.isMysqlActive && this.pool) {
-      try {
-        const [res]: any = await this.pool.query(
-          'DELETE FROM falhas WHERE status IN (1, 3) AND creat_at < (NOW() - INTERVAL ? DAY)',
-          [retentionDays]
-        );
-        deletedCount = res.affectedRows || 0;
-      } catch (e) {
-        logger.error('Erro ao executar limpeza no MySQL', e);
-      }
+    if (!this.isMysqlActive || !this.pool) {
+      throw new Error('MySQL não está disponível. Configure DATABASE_HOST/DATABASE_URL antes de iniciar o sistema.');
     }
 
-    const initialLen = this.localFalhas.length;
-    this.localFalhas = this.localFalhas.filter((f) => {
-      if ((f.status === 1 || f.status === 3) && new Date(f.creat_at) < cutoff) {
-        return false;
-      }
-      return true;
-    });
-    deletedCount += initialLen - this.localFalhas.length;
-    this.saveLocalData();
-
-    return deletedCount;
+    try {
+      const [res]: any = await this.pool.query(
+        'DELETE FROM falhas WHERE status IN (1, 3) AND creat_at < (NOW() - INTERVAL ? DAY)',
+        [retentionDays]
+      );
+      return res.affectedRows || 0;
+    } catch (e) {
+      logger.error('Erro ao executar limpeza no MySQL', e);
+      throw e;
+    }
   }
 }
 

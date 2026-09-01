@@ -20,7 +20,7 @@ export function App() {
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   const [falhas, setFalhas] = useState<FalhaEvent[]>([]);
-  const [dbMode, setDbMode] = useState<string>('embedded');
+  const [dbMode, setDbMode] = useState<string>('mysql');
   const [stats, setStats] = useState<DashboardStats>({
     totalHoje: 0,
     enviados: 0,
@@ -90,7 +90,7 @@ export function App() {
 
       if (statsRes.status === 'fulfilled') {
         setStats(statsRes.value);
-        setDbMode(statsRes.value.dbMode || 'embedded');
+        setDbMode(statsRes.value.dbMode || 'mysql');
       }
       if (falhasRes.status === 'fulfilled') {
         setFalhas(falhasRes.value);
@@ -178,15 +178,38 @@ export function App() {
     [fetchTableData, pushToast]
   );
 
-  const summaryCards = useMemo(
-    () => [
-      { label: 'Pendentes', value: stats.pendentes || 0, accent: 'text-[#6ba4e8]', bg: 'bg-[#285995]/10 border-[#285995]/30' },
-      { label: 'Enviados hoje', value: stats.enviados || 0, accent: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30' },
-      { label: 'Erros', value: stats.erros || 0, accent: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/30' },
-      { label: 'Processando', value: stats.processando || 0, accent: 'text-indigo-300', bg: 'bg-indigo-500/10 border-indigo-500/30' },
-    ],
-    [stats]
-  );
+  const summaryCards = useMemo(() => {
+    const todayFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+
+    const todayParts = todayFormatter.formatToParts(new Date());
+    const todayValues = Object.fromEntries(
+      todayParts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value])
+    );
+    const todayDate = `${todayValues.year}-${todayValues.month}-${todayValues.day}`;
+    const [y, m, d] = todayDate.split('-').map(Number);
+    const todayStart = new Date(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T00:00:00-03:00`);
+    const nextDay = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+    const pendientes = falhas.filter((falha) => falha.status === 0).length;
+    const processando = falhas.filter((falha) => falha.status === 2).length;
+    const erros = falhas.filter((falha) => falha.status === 3).length;
+    const enviadosHoje = falhas.filter((falha) => {
+      const createdAt = new Date(falha.creat_at);
+      return falha.status === 1 && !Number.isNaN(createdAt.getTime()) && createdAt >= todayStart && createdAt < nextDay;
+    }).length;
+
+    return [
+      { label: 'Pendentes', value: pendientes, accent: 'text-[#6ba4e8]', bg: 'bg-[#285995]/10 border-[#285995]/30' },
+      { label: 'Enviados hoje', value: enviadosHoje, accent: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30' },
+      { label: 'Erros', value: erros, accent: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/30' },
+      { label: 'Processando', value: processando, accent: 'text-indigo-300', bg: 'bg-indigo-500/10 border-indigo-500/30' },
+    ];
+  }, [falhas]);
 
   const handleLogout = async () => {
     await api.logout();
@@ -241,7 +264,7 @@ export function App() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="relative min-w-[220px]">
+              <div className="relative w-full sm:w-auto">
                 <input
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
@@ -252,7 +275,10 @@ export function App() {
 
               <select
                 value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as 'all' | 0 | 1 | 2 | 3)}
+                onChange={(event) => {
+                  const val = event.target.value;
+                  setStatusFilter(val === 'all' ? 'all' : Number(val) as 0 | 1 | 2 | 3);
+                }}
                 className="rounded-xl border border-[#5A656C]/40 bg-[#12161A] px-3 py-2.5 text-sm text-white focus:border-[#285995] focus:outline-none"
               >
                 <option value="all">Todos os status</option>
