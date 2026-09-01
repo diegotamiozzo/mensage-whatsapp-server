@@ -88,8 +88,8 @@ export function WhatsAppModal({
               <Radio size={18} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Conexão WhatsApp (Baileys)</h3>
-              <p className="text-xs text-[#D3D6D9]/70">Envio automático de alertas aos técnicos</p>
+              <h3 className="text-sm font-bold text-white">Conexão WhatsApp</h3>
+              <p className="text-xs text-[#D3D6D9]/70">Envio automático de alertas</p>
             </div>
           </div>
           <button
@@ -180,7 +180,7 @@ export function WhatsAppModal({
           <form onSubmit={handleSendTest} className="space-y-2">
             <div>
               <label className="text-[11px] text-[#D3D6D9]/70 block mb-1">
-                Número do Celular (com DDI e DDD, ex: 5548999998888)
+                Número do Celular
               </label>
               <div className="flex gap-2">
                 <input

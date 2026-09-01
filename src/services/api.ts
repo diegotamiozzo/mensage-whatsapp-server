@@ -78,11 +78,6 @@ export const api = {
   getLogs: () => request<LogEntry[]>('/api/logs'),
   getConfig: () => request<SystemConfig>('/api/config'),
   runCleanup: () => request<{ success: boolean; count: number; message: string }>('/api/cleaner/run', { method: 'POST' }),
-  resetThrottle: (equipamento_id: string) =>
-    request<{ success: boolean }>('/api/throttling/reset', {
-      method: 'POST',
-      body: JSON.stringify({ equipamento_id }),
-    }),
 
   // WhatsApp
   getWhatsAppStatus: () => request<{ status: string; qrCode: string | null }>('/whatsapp/status'),

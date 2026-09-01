@@ -1,7 +1,6 @@
 import { db, FalhaEvent } from '../db/database.js';
 import { whatsappService } from './whatsapp.js';
 import { generateFailureMessage } from './messageTemplate.js';
-import { throttlingService } from './throttling.js';
 import { logger } from './logger.js';
 import { broadcastEvent } from '../socket.js';
 import { config } from '../config.js';

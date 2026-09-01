@@ -12,7 +12,6 @@ import { logger } from './server/services/logger.js';
 import { whatsappService } from './server/services/whatsapp.js';
 import { worker } from './server/services/worker.js';
 import { cleanerService } from './server/services/cleaner.js';
-import { throttlingService } from './server/services/throttling.js';
 import { generateTestMessage } from './server/services/messageTemplate.js';
 import {
   verifyAccessCode,
@@ -20,6 +19,9 @@ import {
   validateSessionToken,
   revokeSessionToken,
   authMiddleware,
+  loginRateLimiter,
+  recordFailedLogin,
+  recordSuccessfulLogin,
 } from './server/services/auth.js';
 
 const __filename = '';
@@ -32,7 +34,7 @@ async function startServer() {
   // Setup Socket.IO
   const io = new SocketIOServer(server, {
     cors: {
-      origin: '*',
+      origin: config.corsOrigin,
       methods: ['GET', 'POST'],
     },
   });
@@ -46,25 +48,42 @@ async function startServer() {
     });
   });
 
-  app.use(cors());
+  app.use(cors({ origin: config.corsOrigin }));
   app.use(express.json());
+
+  // ---------------------------------------------------------------------------
+  // OBSERVABILIDADE / HEALTH CHECK
+  // ---------------------------------------------------------------------------
+  app.get('/health', (req, res) => {
+    res.json({
+      status: 'ok',
+      uptime: Math.floor(process.uptime()),
+      databaseMode: db.getMode(),
+      whatsappStatus: whatsappService.getStatus().status,
+      timestamp: new Date().toISOString(),
+    });
+  });
 
   // ---------------------------------------------------------------------------
   // AUTENTICAÇÃO
   // ---------------------------------------------------------------------------
-  app.post('/api/auth/login', (req, res) => {
+  app.post('/api/auth/login', loginRateLimiter, (req, res) => {
     const { accessCode } = req.body;
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+
     if (!accessCode) {
       return res.status(400).json({ success: false, message: 'Código de acesso obrigatório.' });
     }
 
     if (verifyAccessCode(accessCode)) {
+      recordSuccessfulLogin(clientIp);
       const token = generateSessionToken();
       logger.info('Acesso autorizado ao painel industrial.');
       return res.json({ success: true, token });
     }
 
-    logger.warn('Tentativa de acesso com código incorreto.');
+    recordFailedLogin(clientIp);
+    logger.warn(`Tentativa de acesso com código incorreto a partir do IP: ${clientIp}`);
     return res.status(401).json({ success: false, message: 'Código de acesso incorreto.' });
   });
 
@@ -105,14 +124,23 @@ async function startServer() {
       if (!finalEquip || !finalUser) {
         return res.status(400).json({
           success: false,
-          message: 'Parâmetros "equipamento_id" e "user" são obrigatórios.',
+          message: 'Parâmetros "equipamento_id" e "user" (telefone) são obrigatórios.',
+        });
+      }
+
+      // Validação do formato do telefone de destino
+      const digitsOnly = finalUser.replace(/\D/g, '');
+      if (digitsOnly.length < 10 || digitsOnly.length > 15) {
+        return res.status(400).json({
+          success: false,
+          message: `Número de telefone inválido: "${finalUser}". Deve conter DDI + DDD + número (ex: 5548999998888).`,
         });
       }
 
       const falha = await db.insertFalha({
         equipamento_id: finalEquip,
         setor: finalSetor,
-        user: finalUser,
+        user: digitsOnly,
         creat_at: finalDate,
       });
 
@@ -173,10 +201,18 @@ async function startServer() {
         });
       }
 
+      const digitsOnly = finalUser.replace(/\D/g, '');
+      if (digitsOnly.length < 10 || digitsOnly.length > 15) {
+        return res.status(400).json({
+          success: false,
+          message: `Número de telefone inválido: "${finalUser}". Deve conter DDI + DDD + número (ex: 5548999998888).`,
+        });
+      }
+
       const falha = await db.insertFalha({
         equipamento_id: finalEquip,
         setor: finalSetor,
-        user: finalUser,
+        user: digitsOnly,
       });
 
       logger.info(`Simulação de falha acionada: ${falha.equipamento_id} (#${falha.id})`);
@@ -212,21 +248,11 @@ async function startServer() {
     }
   });
 
-  app.post('/api/throttling/reset', authMiddleware, (req, res) => {
-    const { equipamento_id } = req.body;
-    if (equipamento_id) {
-      throttlingService.resetThrottle(equipamento_id);
-      logger.info(`Cooldown anti-flood resetado para ${equipamento_id}.`);
-    }
-    res.json({ success: true });
-  });
-
   app.get('/api/config', authMiddleware, (req, res) => {
     res.json({
       pollingInterval: config.pollingIntervalMs,
       maxRetryAttempts: config.maxRetryAttempts,
       dataRetentionDays: config.dataRetentionDays,
-      throttleWindowMinutes: config.throttleWindowMinutes,
       databaseMode: db.getMode(),
       databaseHost: config.db.host || 'Motor Integrado Local',
     });

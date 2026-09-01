@@ -34,7 +34,6 @@ export interface SystemConfig {
   pollingInterval: number;
   maxRetryAttempts: number;
   dataRetentionDays: number;
-  throttleWindowMinutes: number;
   databaseMode: string;
   databaseHost: string;
 }

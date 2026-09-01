@@ -134,11 +134,7 @@ return msg;`;
                 <span className="text-[#5A656C] block">Retenção de Dados:</span>
                 <span className="text-[#D3D6D9] font-bold font-mono">{config.dataRetentionDays} dias</span>
               </div>
-              <div className="p-3 bg-[#12161A] border border-[#5A656C]/30 rounded-xl">
-                <span className="text-[#5A656C] block">Janela Anti-Flood:</span>
-                <span className="text-[#D3D6D9] font-bold font-mono">{config.throttleWindowMinutes} min</span>
-              </div>
-              <div className="p-3 bg-[#12161A] border border-[#5A656C]/30 rounded-xl col-span-2">
+              <div className="p-3 bg-[#12161A] border border-[#5A656C]/30 rounded-xl col-span-2 sm:col-span-3">
                 <span className="text-[#5A656C] block">Banco de Dados:</span>
                 <span className="text-[#285995] font-bold font-mono">
                   {config.databaseMode === 'mysql' ? `MySQL (${config.databaseHost})` : 'Motor Local Integrado'}

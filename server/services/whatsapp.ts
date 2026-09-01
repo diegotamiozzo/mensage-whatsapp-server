@@ -17,6 +17,7 @@ class WhatsappService {
   private qrCodeData: string | null = null;
   private connectionStatus: WhatsAppConnectionState = 'disconnected';
   private isConnecting = false;
+  private connectionTimeout: NodeJS.Timeout | null = null;
 
   constructor() {
     // Attempt connection on startup
@@ -38,6 +39,13 @@ class WhatsappService {
     broadcastEvent('whatsapp:status', this.getStatus());
   }
 
+  private clearConnectionTimeout() {
+    if (this.connectionTimeout) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = null;
+    }
+  }
+
   public async connectToWhatsApp(): Promise<void> {
     if (this.connectionStatus === 'connected' || this.isConnecting) {
       return;
@@ -47,6 +55,17 @@ class WhatsappService {
     this.connectionStatus = 'connecting';
     this.broadcastStatus();
     logger.info('Iniciando conexão com WhatsApp (Baileys)...');
+
+    // Timeout: if connection doesn't resolve within 45s, reset state
+    this.clearConnectionTimeout();
+    this.connectionTimeout = setTimeout(() => {
+      if (this.isConnecting && this.connectionStatus === 'connecting') {
+        logger.warn('Timeout na tentativa de conexão com WhatsApp. Redefinindo estado para desconectado.');
+        this.isConnecting = false;
+        this.connectionStatus = 'disconnected';
+        this.broadcastStatus();
+      }
+    }, 45000);
 
     const authPath = path.resolve(process.cwd(), config.whatsappSessionPath);
     if (!fs.existsSync(authPath)) {
@@ -68,6 +87,7 @@ class WhatsappService {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
+          this.clearConnectionTimeout();
           try {
             this.qrCodeData = await qrcode.toDataURL(qr);
             this.connectionStatus = 'waiting_qr';
@@ -80,6 +100,7 @@ class WhatsappService {
         }
 
         if (connection === 'close') {
+          this.clearConnectionTimeout();
           this.isConnecting = false;
           const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
           const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
@@ -96,6 +117,7 @@ class WhatsappService {
             }, 3000);
           }
         } else if (connection === 'open') {
+          this.clearConnectionTimeout();
           this.isConnecting = false;
           this.qrCodeData = null;
           this.connectionStatus = 'connected';
@@ -106,6 +128,7 @@ class WhatsappService {
 
       this.sock.ev.on('creds.update', saveCreds);
     } catch (err: any) {
+      this.clearConnectionTimeout();
       this.isConnecting = false;
       this.connectionStatus = 'disconnected';
       this.qrCodeData = null;

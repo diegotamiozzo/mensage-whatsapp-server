@@ -55,7 +55,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-[#D3D6D9] uppercase tracking-wider mb-2 flex items-center justify-between">
+            <label className="text-xs font-bold text-[#D3D6D9] uppercase tracking-wider mb-2 flex items-center justify-between">
               <span>Código de Acesso</span>
             </label>
             <div className="relative">

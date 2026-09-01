@@ -72,12 +72,12 @@ export function AlertTable({ falhas }: AlertTableProps) {
             {/* Linha 1: Nomes das Colunas */}
             <tr className="bg-[#1F2730] border-b border-[#5A656C]/40 text-white font-bold text-xs tracking-wider">
               <th className="py-3 px-4 border-r border-[#5A656C]/30 w-16">id</th>
-              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-[150px]">equipamento_id</th>
-              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-[180px]">setor</th>
-              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-[160px]">user</th>
-              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-[140px]">status</th>
-              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-[170px]">creat-at</th>
-              <th className="py-3 px-4 min-w-[170px]">update_at</th>
+              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-37.5">equipamento_id</th>
+              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-45">setor</th>
+              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-40">user</th>
+              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-35">status</th>
+              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-42.5">creat-at</th>
+              <th className="py-3 px-4 min-w-42.5">update_at</th>
             </tr>
 
             {/* Linha 2: Descrições das Colunas conforme a planilha */}

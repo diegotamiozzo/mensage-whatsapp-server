@@ -3,12 +3,19 @@ import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
-// Default access code hash: default is "admin123"
+// Access code configuration
 const rawAccessCode = process.env.ACCESS_CODE || 'admin123';
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction && rawAccessCode === 'admin123') {
+  console.warn('\x1b[33m%s\x1b[0m', '⚠️  AVISO DE SEGURANÇA: O código de acesso padrão (admin123) está sendo usado em ambiente de produção! Configure a variável ACCESS_CODE no arquivo .env.');
+}
+
 const accessCodeHash = bcrypt.hashSync(rawAccessCode, 10);
 
 export const config = {
-  port: 3000,
+  port: Number(process.env.PORT) || 3000,
+  corsOrigin: process.env.CORS_ORIGIN || '*',
   db: {
     host: process.env.DATABASE_HOST || '',
     port: Number(process.env.DATABASE_PORT) || 3306,
@@ -20,9 +27,8 @@ export const config = {
   whatsappSessionPath: process.env.WHATSAPP_SESSION_PATH || './auth_info_baileys',
   pollingIntervalMs: Number(process.env.POLLING_INTERVAL) || 2000,
   maxRetryAttempts: Number(process.env.MAX_RETRY_ATTEMPTS) || 5,
-  throttleWindowMinutes: Number(process.env.THROTTLE_WINDOW_MINUTES) || 10,
   dataRetentionDays: Number(process.env.DATA_RETENTION_DAYS) || 30,
   accessCode: rawAccessCode,
   accessCodeHash,
-  jwtSecret: process.env.JWT_SECRET || 'industrial-alerts-secret-token-key',
 };
+

@@ -1,82 +1,143 @@
-# Sistema de Disparo de WhatsApp (NestJS + React + Baileys)
+# Sistema de Notificação e Alertas Industriais via WhatsApp
 
-Aplicação full-stack que integra um back-end em **NestJS** (utilizando a biblioteca **Baileys** para automação do WhatsApp) com um front-end em **React** para envio de mensagens e gerenciamento administrativo da conexão via QR Code.
-
----
-
-##  Pré-requisitos
-
-Certifique-se de ter instalado em sua máquina:
-
-- [Node.js](https://nodejs.org/) (versão 18 ou superior recomendada)
-- Gerenciador de pacotes `npm`
+Sistema full-stack (**Express** + **React/Vite** + **Socket.IO** + **Baileys**) para recepção de eventos de falhas industriais (CLPs, supervisórios, Node-RED, sensores IoT) e disparo automatizado de notificações via WhatsApp.
 
 ---
 
-##  Como Clonar e Configurar o Projeto
+## 🏗️ Arquitetura
 
-### 1. Clone o repositório
-
-```bash
-git clone https://github.com/diegotamiozzo/mensage-whatsapp.git
-cd mensage-whatsapp
+```
+├── server/
+│   ├── config.ts              # Configurações do sistema via variáveis de ambiente
+│   ├── db/
+│   │   └── database.ts        # Camada de banco unificada (MySQL + Fallback JSON Local)
+│   ├── services/
+│   │   ├── auth.ts            # Autenticação por access code, rate limiting e tokens TTL
+│   │   ├── cleaner.ts         # Rotina de expurgo de registros antigos
+│   │   ├── logger.ts          # Buffer de logs em memória para o painel
+│   │   ├── messageTemplate.ts # Formatação dos templates de mensagem de alerta
+│   │   ├── whatsapp.ts        # Integração com WhatsApp Web via Baileys
+│   │   └── worker.ts          # Fila e processamento assíncrono de disparos
+│   └── socket.ts              # WebSocket Socket.IO em tempo real
+├── src/                       # Frontend SPA (React + Tailwind CSS + Lucide Icons)
+│   ├── components/            # Painel, Dashboard, QR Code, Logs e Modais
+│   ├── services/              # Cliente API e WebSocket
+│   └── types/                 # Interfaces TypeScript
+├── server.ts                  # Ponto de entrada do servidor Node.js + Express
+└── vite.config.ts             # Configuração do Vite para desenvolvimento e build
 ```
 
-### 2. Configuração e Execução do Back-end
+---
+
+## 🚀 Como Executar o Projeto
+
+### 1. Pré-requisitos
+- [Node.js](https://nodejs.org/) versão 18 ou superior.
+- Gerenciador de pacotes `npm`.
+
+### 2. Instalação de Dependências
+Na raiz do projeto, instale as dependências:
 
 ```bash
-cd backend
 npm install
-npm install qrcode
-npm install --save-dev @types/qrcode @types/qrcode-terminal
-npm run start:dev
 ```
 
-O servidor NestJS será iniciado (por padrão em `http://localhost:3000`, verifique o `main.ts` para confirmar a porta).
+### 3. Configuração do `.env`
+Crie ou edite o arquivo `.env` baseado no `.env.example`:
 
-### 3. Configuração e Execução do Front-end
+```env
+PORT=3000
+CORS_ORIGIN=*
+ACCESS_CODE=admin123
 
-Abra um **novo terminal** na raiz do projeto:
+# Opcional: Se não informado, utilizará o motor de banco integrado local (JSON)
+DATABASE_HOST=localhost
+DATABASE_PORT=3306
+DATABASE_NAME=industrial_alerts
+DATABASE_USER=root
+DATABASE_PASSWORD=sua_senha
+```
+
+### 4. Execução em Modo de Desenvolvimento
+Inicie o servidor integrado (backend Express + frontend Vite com HMR no mesmo processo):
 
 ```bash
-cd frontend
-npm install
 npm run dev
 ```
 
-O Vite iniciará o servidor de desenvolvimento (geralmente em `http://localhost:5173`).
+O dashboard estará disponível em: `http://localhost:3000`
 
----
+### 5. Build e Execução em Produção
 
-##  Estrutura do Projeto
+```bash
+# Compila o frontend React e o servidor backend
+npm run build
 
-```
-├── backend/          # API NestJS + integração Baileys (WhatsApp)
-│   └── src/
-│       └── whatsapp/  # Módulo responsável pela conexão e envio de mensagens
-└── frontend/         # Interface React (dashboard administrativo)
-    └── src/
-        └── components/
-            └── WhatsAppDashboard.jsx
+# Executa o servidor em modo de produção
+npm start
 ```
 
 ---
 
-##  Conectando o WhatsApp
+## 📡 Endpoints da API
 
-1. Inicie o back-end normalmente.
-2. Acesse o dashboard no front-end.
-3. Escaneie o **QR Code** exibido com o aplicativo do WhatsApp no celular (Menu > Aparelhos conectados > Conectar um aparelho).
-4. As credenciais da sessão serão salvas localmente na pasta `backend/auth_info_baileys/` (esta pasta **não deve ser versionada** — já está no `.gitignore`).
+### Ingestão de Falhas (IoT / CLP / Supervisório)
+- `POST /api/iot/falha`
+  - Não requer autenticação de sessão do dashboard.
+  - **Body (JSON):**
+    ```json
+    {
+      "equipamento_id": "EQ-001",
+      "setor": "Estamparia",
+      "user": "5548999998888"
+    }
+    ```
+
+### Autenticação do Painel
+- `POST /api/auth/login` (com Rate Limiting anti-força bruta)
+  - **Body:** `{ "accessCode": "admin123" }`
+  - **Retorno:** `{ "success": true, "token": "ind_alert_..." }`
+- `GET /api/auth/verify`
+- `POST /api/auth/logout`
+
+### Saúde e Monitoramento
+- `GET /health` (Status operacional, modo de banco, status do WhatsApp e uptime)
+- `GET /api/stats` (Estatísticas do dia e totais por status)
+- `GET /api/falhas` (Listagem com filtros e paginação)
+- `POST /api/falhas/:id/retry` (Reenfileiramento manual de falhas com erro)
+- `GET /api/logs` (Últimos logs do sistema)
+
+### WhatsApp
+- `GET /whatsapp/status` (Retorna estado da conexão e QR Code em base64 se pendente)
+- `POST /whatsapp/connect` (Inicia o emparelhamento)
+- `POST /whatsapp/disconnect` (Desconecta e apaga as credenciais salvas)
+- `POST /whatsapp/send-test` (Dispara mensagem de teste unitário)
 
 ---
 
-##  Aviso
+## 🗄️ Script SQL (Tabela `falhas`)
 
-O uso de bibliotecas não oficiais como o Baileys para automação do WhatsApp pode violar os Termos de Serviço da plataforma. Utilize por sua conta e risco, preferencialmente em ambientes de teste ou com números dedicados.
+```sql
+CREATE DATABASE IF NOT EXISTS industrial_alerts;
+USE industrial_alerts;
+
+CREATE TABLE IF NOT EXISTS falhas (
+    id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'identificador de falhas',
+    equipamento_id VARCHAR(50) NOT NULL COMMENT 'identificador do equipamento',
+    setor VARCHAR(100) NOT NULL COMMENT 'setor, local da instalação do equipamento',
+    user VARCHAR(30) NOT NULL COMMENT 'destinatário do envio da mensagem (WhatsApp)',
+    status TINYINT NOT NULL DEFAULT 0 COMMENT '0=Pendente, 1=Enviado, 2=Processando, 3=Erro',
+    attempts INT NOT NULL DEFAULT 0 COMMENT 'contador de tentativas',
+    error_message TEXT NULL COMMENT 'última mensagem de erro',
+    creat_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'momento da falha',
+    update_at DATETIME NULL COMMENT 'momento do envio da mensagem',
+    INDEX idx_falhas_status (status),
+    INDEX idx_falhas_equipamento (equipamento_id),
+    INDEX idx_falhas_creat_at (creat_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
 
 ---
 
-##  Desenvolvido por 
-
-Diego Tamiozzo
+## ⚠️ Aviso Legal
+O uso de bibliotecas não oficiais para automação do WhatsApp (como Baileys) deve estar em conformidade com as diretrizes e termos de serviço da plataforma. Utilize números dedicados para notificações operacionais da empresa.
