@@ -92,7 +92,7 @@ class FailureWorkerService {
     try {
       await whatsappService.sendMessage(event.user, messageText);
 
-      const updateAtIso = new Date().toISOString();
+      const updateAtIso = new Date().toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' }).replace(' ', 'T') + '.000';
       await db.updateFalhaSuccess(event.id, updateAtIso);
 
       logger.success(`Mensagem enviada com sucesso para ${event.user} (Equipamento: ${event.equipamento_id})`);

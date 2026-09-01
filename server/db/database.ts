@@ -4,30 +4,46 @@ import path from 'path';
 import { config } from '../config.js';
 import { logger } from '../services/logger.js';
 
+function getBraziliaDate(dateInput?: Date | string | null): Date {
+  const baseDate = dateInput ? new Date(dateInput) : new Date();
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(baseDate);
+  const values = Object.fromEntries(
+    parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value])
+  );
+
+  const year = Number(values.year);
+  const month = Number(values.month);
+  const day = Number(values.day);
+  const hours = Number(values.hour);
+  const minutes = Number(values.minute);
+  const seconds = Number(values.second);
+
+  return new Date(year, month - 1, day, hours, minutes, seconds);
+}
+
 function toMysqlDatetime(dateInput?: Date | string | null): string {
-  // Se não foi fornecido dateInput, usamos o horária local atual (sem conversão incorreta para UTC/zulu)
-  const d = dateInput ? new Date(dateInput) : new Date();
+  const d = getBraziliaDate(dateInput);
   const pad = (n: number) => String(n).padStart(2, '0');
-  const year = d.getFullYear();
-  const month = pad(d.getMonth() + 1);
-  const day = pad(d.getDate());
-  const hours = pad(d.getHours());
-  const minutes = pad(d.getMinutes());
-  const seconds = pad(d.getSeconds());
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 function toLocalIsoString(dateInput?: Date | string | null): string {
-  const d = dateInput ? new Date(dateInput) : new Date();
+  const d = getBraziliaDate(dateInput);
   const pad = (n: number) => String(n).padStart(2, '0');
-  const year = d.getFullYear();
-  const month = pad(d.getMonth() + 1);
-  const day = pad(d.getDate());
-  const hours = pad(d.getHours());
-  const minutes = pad(d.getMinutes());
-  const seconds = pad(d.getSeconds());
   const ms = String(d.getMilliseconds()).padStart(3, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${ms}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${ms}`;
 }
 
 export interface FalhaEvent {
@@ -176,9 +192,13 @@ class DatabaseService {
       
       // Sincroniza fuso horário da sessão MySQL para Horário de Brasília (UTC-3)
       try {
-        await connection.query("SET time_zone = '-03:00'");
+        await connection.query("SET time_zone = 'America/Sao_Paulo'");
       } catch (tzErr) {
-        // Se timezone nomeado não estiver carregado no MySQL, ignora silenciosamente
+        try {
+          await connection.query("SET time_zone = '-03:00'");
+        } catch {
+          // Se o timezone nomeado não estiver disponível, mantém o offset absoluto.
+        }
       }
 
       // Auto-create single table if not exists in MySQL
