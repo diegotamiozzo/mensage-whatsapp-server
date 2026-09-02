@@ -288,13 +288,14 @@ class DatabaseService {
     throw new Error('MySQL não está disponível. Configure DATABASE_HOST/DATABASE_URL antes de iniciar o sistema.');
   }
 
-  public async updateFalhaSuccess(id: number, updateAtIso: string): Promise<void> {
+public async updateFalhaSuccess(id: number, updateAtIso?: string | Date): Promise<void> {
     if (!this.isMysqlActive || !this.pool) {
       throw new Error('MySQL não está disponível. Configure DATABASE_HOST/DATABASE_URL antes de iniciar o sistema.');
     }
 
     try {
-      const mysqlFormattedDate = toMysqlDatetime(updateAtIso);
+      // Usa a mesma função de conversão para garantir o horário correto de Brasília (-03:00)
+      const mysqlFormattedDate = toMysqlDatetime(updateAtIso || new Date());
       await this.pool.query(
         'UPDATE falhas SET status = 1, update_at = ? WHERE id = ?',
         [mysqlFormattedDate, id]
