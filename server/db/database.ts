@@ -28,7 +28,7 @@ export function toBrasilIsoString(dateInput?: Date | string | null): string {
   const minutes = values.minute;
   const seconds = values.second;
 
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-03:00`;
 }
 
 function getBraziliaDate(dateInput?: Date | string | null): Date {
