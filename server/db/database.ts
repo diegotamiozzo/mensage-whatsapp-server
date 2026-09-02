@@ -2,7 +2,7 @@ import mysql from 'mysql2/promise';
 import { config } from '../config.js';
 import { logger } from '../services/logger.js';
 
-function getBraziliaDate(dateInput?: Date | string | null): Date {
+export function toBrasilIsoString(dateInput?: Date | string | null): string {
   const baseDate = dateInput ? new Date(dateInput) : new Date();
 
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -21,28 +21,34 @@ function getBraziliaDate(dateInput?: Date | string | null): Date {
     parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value])
   );
 
-  const year = Number(values.year);
-  const month = Number(values.month);
-  const day = Number(values.day);
-  const hours = Number(values.hour);
-  const minutes = Number(values.minute);
-  const seconds = Number(values.second);
+  const year = values.year;
+  const month = values.month;
+  const day = values.day;
+  const hours = values.hour;
+  const minutes = values.minute;
+  const seconds = values.second;
 
-  return new Date(year, month - 1, day, hours, minutes, seconds);
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-03:00`;
 }
 
-function toUtcIsoString(dateInput?: Date | string | null): string {
-  const d = dateInput ? new Date(dateInput) : new Date();
-  return d.toISOString();
+function getBraziliaDate(dateInput?: Date | string | null): Date {
+  const brazilIso = toBrasilIsoString(dateInput);
+  return new Date(brazilIso);
 }
 
 function toMysqlDatetime(dateInput?: Date | string | null): string {
-  const d = dateInput ? new Date(dateInput) : new Date();
-  return d.toISOString().slice(0, 19).replace('T', ' ');
+  const brazilDate = getBraziliaDate(dateInput);
+  const year = brazilDate.getFullYear();
+  const month = String(brazilDate.getMonth() + 1).padStart(2, '0');
+  const day = String(brazilDate.getDate()).padStart(2, '0');
+  const hours = String(brazilDate.getHours()).padStart(2, '0');
+  const minutes = String(brazilDate.getMinutes()).padStart(2, '0');
+  const seconds = String(brazilDate.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
 function toLocalIsoString(dateInput?: Date | string | null): string {
-  return toUtcIsoString(dateInput);
+  return toBrasilIsoString(dateInput);
 }
 
 function getStartOfDayInSaoPaulo(): Date {
