@@ -2,7 +2,18 @@ import { FalhaEvent, toBrasilIsoString } from '../db/database.js';
 
 export function formatEventDateTime(isoString: string): string {
   try {
-    const d = new Date(isoString);
+    if (!isoString) return '';
+    // Se a string vier no formato MySQL "YYYY-MM-DD HH:mm:ss", converte para ISO UTC/Offset explicitamente
+    let normalized = isoString;
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(isoString)) {
+      normalized = isoString.replace(' ', 'T') + '-03:00';
+    } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(isoString)) {
+      normalized = isoString + '-03:00';
+    }
+
+    const d = new Date(normalized);
+    if (Number.isNaN(d.getTime())) return isoString;
+
     const formatter = new Intl.DateTimeFormat('pt-BR', {
       timeZone: 'America/Sao_Paulo',
       day: '2-digit',
