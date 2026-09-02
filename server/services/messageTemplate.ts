@@ -1,4 +1,4 @@
-import { FalhaEvent } from '../db/database.js';
+import { FalhaEvent, toBrasilIsoString } from '../db/database.js';
 
 export function formatEventDateTime(isoString: string): string {
   try {
@@ -40,7 +40,7 @@ export function generateFailureMessage(event: FalhaEvent): string {
  * Template de teste manual do sistema
  */
 export function generateTestMessage(phoneNumber: string): string {
-  const now = formatEventDateTime(new Date().toISOString());
+  const now = formatEventDateTime(toBrasilIsoString());
   return `✅ *TESTE DE COMUNICAÇÃO*
 
 Sistema de notificações conectado com sucesso!

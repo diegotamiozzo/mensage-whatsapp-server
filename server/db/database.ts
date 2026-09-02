@@ -28,7 +28,7 @@ export function toBrasilIsoString(dateInput?: Date | string | null): string {
   const minutes = values.minute;
   const seconds = values.second;
 
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-03:00`;
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
 function getBraziliaDate(dateInput?: Date | string | null): Date {
@@ -127,7 +127,7 @@ class DatabaseService {
       const connection = await this.pool.getConnection();
       logger.success(`Conexão com MySQL estabelecida com sucesso no host ${config.db.host}!`);
       
-      // Sincroniza fuso horário da sessão MySQL para Horário de Brasília (UTC-3)
+      // Sincroniza fuso horário da sessão MySQL para Horário de Brasília)
       try {
         await connection.query("SET time_zone = 'America/Sao_Paulo'");
       } catch (tzErr) {

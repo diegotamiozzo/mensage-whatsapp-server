@@ -1,4 +1,4 @@
-import { db, FalhaEvent } from '../db/database.js';
+import { db, FalhaEvent, toBrasilIsoString } from '../db/database.js';
 import { whatsappService } from './whatsapp.js';
 import { generateFailureMessage } from './messageTemplate.js';
 import { logger } from './logger.js';
@@ -92,7 +92,7 @@ class FailureWorkerService {
     try {
       await whatsappService.sendMessage(event.user, messageText);
 
-      const updateAtIso = new Date().toISOString();
+      const updateAtIso = toBrasilIsoString();
       await db.updateFalhaSuccess(event.id, updateAtIso);
 
       logger.success(`Mensagem enviada com sucesso para ${event.user} (Equipamento: ${event.equipamento_id})`);
