@@ -114,16 +114,21 @@ async function startServer() {
         ? req.headers.authorization.slice('Bearer '.length)
         : undefined;
 
-      const isProduction = config.nodeEnv === 'production';
-      const hasValidKey = !!configuredIotKey && (requestKey === configuredIotKey || bearerToken === configuredIotKey);
+      if (!configuredIotKey) {
+        logger.warn('Requisição de ingestão IoT rejeitada: IOT_API_KEY não configurada no .env');
+        return res.status(503).json({
+          success: false,
+          message: 'Servidor não configurado para receber eventos IoT. Defina IOT_API_KEY no .env.',
+        });
+      }
 
-      if (isProduction || configuredIotKey) {
-        if (!hasValidKey) {
-          return res.status(401).json({
-            success: false,
-            message: 'Chave de API de dispositivo inválida ou ausente.',
-          });
-        }
+      const hasValidKey = requestKey === configuredIotKey || bearerToken === configuredIotKey;
+
+      if (!hasValidKey) {
+        return res.status(401).json({
+          success: false,
+          message: 'Chave de API de dispositivo inválida ou ausente.',
+        });
       }
 
       const {
