@@ -190,17 +190,16 @@ export function App() {
     const todayValues = Object.fromEntries(
       todayParts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value])
     );
-    const todayDate = `${todayValues.year}-${todayValues.month}-${todayValues.day}`;
-    const [y, m, d] = todayDate.split('-').map(Number);
-    const todayStart = new Date(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T00:00:00-03:00`);
-    const nextDay = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+    const todayDateStr = `${todayValues.year}-${todayValues.month}-${todayValues.day}`;
 
     const pendientes = falhas.filter((falha) => falha.status === 0).length;
     const processando = falhas.filter((falha) => falha.status === 2).length;
     const erros = falhas.filter((falha) => falha.status === 3).length;
+    
     const enviadosHoje = falhas.filter((falha) => {
-      const createdAt = new Date(falha.creat_at);
-      return falha.status === 1 && !Number.isNaN(createdAt.getTime()) && createdAt >= todayStart && createdAt < nextDay;
+      if (falha.status !== 1 || !falha.creat_at) return false;
+      const rowDateStr = String(falha.creat_at).substring(0, 10);
+      return rowDateStr === todayDateStr;
     }).length;
 
     return [

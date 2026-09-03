@@ -9,19 +9,19 @@ function formatDateDisplay(isoString?: string | null): string {
   if (!isoString) return '-';
 
   try {
-    const d = new Date(isoString);
-    if (Number.isNaN(d.getTime())) return String(isoString);
+    const cleanStr = String(isoString).replace('Z', '').split('+')[0];
+    const [datePart, timePart] = cleanStr.split('T');
+    
+    if (!datePart || !timePart) return String(isoString);
 
-    return new Intl.DateTimeFormat('pt-BR', {
-      timeZone: 'America/Sao_Paulo',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    }).format(d);
+    const [year, month, day] = datePart.split('-');
+    const [hour, minute, second] = timePart.split(':');
+
+    if (!year || !month || !day || !hour || !minute) return String(isoString);
+
+    const sec = second ? second.substring(0, 2) : '00';
+
+    return `${day}/${month}/${year}, ${hour}:${minute}:${sec}`;
   } catch {
     return String(isoString || '-');
   }
@@ -78,7 +78,7 @@ export function AlertTable({ falhas, onRetry }: AlertTableProps) {
               <th className="py-3 px-4 border-r border-[#5A656C]/30 w-16">id</th>
               <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-37.5">equipamento_id</th>
               <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-45">setor</th>
-              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-min-42.5">user</th>
+              <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-42.5">user</th>
               <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-40">status</th>
               <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-42.5">creat-at</th>
               <th className="py-3 px-4 border-r border-[#5A656C]/30 min-w-42.5">update_at</th>
