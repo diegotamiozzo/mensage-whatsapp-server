@@ -51,6 +51,36 @@ function toLocalIsoString(dateInput?: Date | string | null): string {
   return toBrasilIsoString(dateInput);
 }
 
+/**
+ * Converte uma string de data/hora retornada pelo MySQL (formato "YYYY-MM-DD HH:mm:ss"
+ * ou "YYYY-MM-DD HH:mm:ss.SSS") para uma string ISO 8601 com offset -03:00 (Brasília).
+ * Isso garante que o frontend e qualquer consumidor interpretem o horário corretamente,
+ * independentemente do fuso horário do navegador ou servidor.
+ */
+function normalizeMysqlDatetime(value: string | null | undefined): string | null {
+  if (!value) return null;
+
+  const trimmed = String(value).trim();
+  // Já está em ISO com offset? Mantém como está.
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(trimmed) && (trimmed.includes('+') || trimmed.includes('-') || trimmed.endsWith('Z'))) {
+    return trimmed;
+  }
+
+  // Formato MySQL: "YYYY-MM-DD HH:mm:ss" ou "YYYY-MM-DD HH:mm:ss.SSS"
+  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})[ ](\d{2}:\d{2}:\d{2})(\.\d+)?$/);
+  if (match) {
+    return `${match[1]}T${match[2]}-03:00`;
+  }
+
+  // Formato ISO sem offset: "YYYY-MM-DDTHH:mm:ss"
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(trimmed)) {
+    return `${trimmed}-03:00`;
+  }
+
+  // Se não conseguiu normalizar, devolve como está (pode já ser uma data ISO válida)
+  return trimmed;
+}
+
 function getStartOfDayInSaoPaulo(): Date {
   const now = new Date();
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -198,8 +228,8 @@ class DatabaseService {
             status: existingRows[0].status,
             attempts: existingRows[0].attempts || 0,
             error_message: existingRows[0].error_message || null,
-            creat_at: existingRows[0].creat_at,
-            update_at: existingRows[0].update_at,
+            creat_at: normalizeMysqlDatetime(existingRows[0].creat_at) || localIsoCreatAt,
+            update_at: normalizeMysqlDatetime(existingRows[0].update_at),
           };
         }
       } catch (e) {
@@ -262,8 +292,8 @@ class DatabaseService {
           status: r.status,
           attempts: r.attempts || 0,
           error_message: r.error_message || null,
-          creat_at: r.creat_at,
-          update_at: r.update_at,
+          creat_at: normalizeMysqlDatetime(r.creat_at) || r.creat_at,
+          update_at: normalizeMysqlDatetime(r.update_at),
         }));
 
         if (lockedEvents.length > 0) {
@@ -363,8 +393,8 @@ public async updateFalhaSuccess(id: number, updateAtIso?: string | Date): Promis
         status: r.status,
         attempts: r.attempts || 0,
         error_message: r.error_message || null,
-        creat_at: r.creat_at,
-        update_at: r.update_at,
+        creat_at: normalizeMysqlDatetime(r.creat_at) || r.creat_at,
+        update_at: normalizeMysqlDatetime(r.update_at),
       })) as FalhaEvent[];
     } catch (e) {
       logger.error('Erro ao listar falhas do MySQL', e);
