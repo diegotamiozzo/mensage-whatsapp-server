@@ -82,8 +82,11 @@ npm start
 ## 📡 Endpoints da API
 
 ### Ingestão de Falhas (IoT / CLP / Supervisório)
-- `POST /api/iot/falha`
+- `POST http://173.255.119.217/whatsapp/api/iot/falha` (ou `/api/iot/falha` relativo à raiz da aplicação)
   - Não requer autenticação de sessão do dashboard.
+  - **Cabeçalhos (Headers):**
+    - `Content-Type: application/json`
+    - `X-Device-Key: <sua_iot_api_key>` (também aceito via `Authorization: Bearer <sua_iot_api_key>` ou `X-IoT-Key` por retrocompatibilidade)
   - **Body (JSON):**
     ```json
     {
